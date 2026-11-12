@@ -86,9 +86,15 @@ const createService = (req, res) => {
         ],
         (err, result) => {
             if (err) {
+                if (err.code === "ER_DUP_ENTRY") {
+                    return res.status(409).json({
+                        message: "A service with this name already exists"
+                    });
+                }
+
                 console.error(err);
                 return res.status(500).json({
-                    message: "Failed to create service"
+                    message: "Error creating service"
                 });
             }
 

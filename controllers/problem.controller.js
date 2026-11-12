@@ -53,6 +53,7 @@ const getProblemById = (req, res) => {
 };
 
 
+
 const createProblem = (req, res) => {
     const {
         problem_title,
@@ -60,6 +61,12 @@ const createProblem = (req, res) => {
         root_cause,
         problem_status
     } = req.body;
+
+    if (!problem_title || !problem_title.trim()) {
+        return res.status(400).json({
+            message: "Problem title is required"
+        });
+    }
 
     const sql = `
         INSERT INTO PROBLEM
@@ -74,7 +81,7 @@ const createProblem = (req, res) => {
     `;
 
     const values = [
-        problem_title,
+        problem_title.trim(),
         description || null,
         root_cause || null,
         problem_status || "Open"
@@ -88,12 +95,13 @@ const createProblem = (req, res) => {
             });
         }
 
-        res.status(201).json({
+        return res.status(201).json({
             message: "Problem created successfully",
             problem_id: result.insertId
         });
     });
 };
+
 
 
 const updateProblem = (req, res) => {

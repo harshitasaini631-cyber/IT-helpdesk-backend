@@ -10,6 +10,8 @@ const serviceRouter = require("./routes/service.routes");
 const problemRouter = require("./routes/problem.routes");
 const escalationRouter = require("./routes/escalation.routes");
 const authRouter = require("./routes/auth.routes");
+const incidentActivityRouter = require("./routes/incidentActivity.routes");
+const connectMongoDB = require("./config/mongo");
 require("dotenv").config();
 
 const db = require("./config/db");
@@ -27,6 +29,8 @@ app.use("/api/services", serviceRouter);
 app.use("/api/problems", problemRouter);
 app.use("/api/escalations", escalationRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/activities", incidentActivityRouter);
+connectMongoDB();
 
 app.get("/", (req, res) => {
     res.send("IT Helpdesk API is running!");

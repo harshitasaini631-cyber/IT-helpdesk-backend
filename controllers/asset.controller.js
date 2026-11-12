@@ -69,6 +69,7 @@ const getAssetById = (req, res) => {
 
 
 
+
 const createAsset = (req, res) => {
     const {
         asset_tag,
@@ -80,6 +81,13 @@ const createAsset = (req, res) => {
         purchase_date,
         asset_status
     } = req.body;
+
+    // Validate required fields
+    if (!asset_tag || !asset_name || !asset_type || !asset_status) {
+        return res.status(400).json({
+            message: "Asset tag, name, type and status are required"
+        });
+    }
 
     const sql = `
         INSERT INTO ASSET
@@ -97,30 +105,38 @@ const createAsset = (req, res) => {
     `;
 
     const values = [
-        asset_tag,
-        asset_name,
+        asset_tag.trim(),
+        asset_name.trim(),
         asset_type,
-        serial_number,
+        serial_number || null,
         assigned_user_id || null,
         department_id || null,
-        purchase_date,
+        purchase_date || null,
         asset_status
     ];
 
     db.query(sql, values, (err, result) => {
         if (err) {
+            if (err.code === "ER_DUP_ENTRY") {
+                return res.status(409).json({
+                    message: "Asset tag or serial number already exists"
+                });
+            }
+
             console.error(err);
             return res.status(500).json({
                 message: "Failed to create asset"
             });
         }
 
-        res.status(201).json({
+        return res.status(201).json({
             message: "Asset created successfully",
             asset_id: result.insertId
         });
     });
 };
+
+
 
 
 
@@ -138,6 +154,12 @@ const updateAsset = (req, res) => {
         asset_status
     } = req.body;
 
+    if (!asset_tag || !asset_name || !asset_type || !asset_status) {
+        return res.status(400).json({
+            message: "Asset tag, name, type and status are required"
+        });
+    }
+
     const sql = `
         UPDATE ASSET
         SET
@@ -153,19 +175,25 @@ const updateAsset = (req, res) => {
     `;
 
     const values = [
-        asset_tag,
-        asset_name,
+        asset_tag.trim(),
+        asset_name.trim(),
         asset_type,
-        serial_number,
+        serial_number || null,
         assigned_user_id || null,
         department_id || null,
-        purchase_date,
+        purchase_date || null,
         asset_status,
         id
     ];
 
     db.query(sql, values, (err, result) => {
         if (err) {
+            if (err.code === "ER_DUP_ENTRY") {
+                return res.status(409).json({
+                    message: "Asset tag or serial number already exists"
+                });
+            }
+
             console.error(err);
             return res.status(500).json({
                 message: "Failed to update asset"
@@ -174,15 +202,16 @@ const updateAsset = (req, res) => {
 
         if (result.affectedRows === 0) {
             return res.status(404).json({
-                message: "Asset not found"
+                message: "Asset not found or no changes made"
             });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Asset updated successfully"
         });
     });
 };
+
 
 
 

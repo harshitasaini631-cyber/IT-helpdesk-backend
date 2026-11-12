@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 // Register a new employee
+
 const registerUser = async (req, res) => {
     try {
         const {
@@ -20,101 +21,93 @@ const registerUser = async (req, res) => {
             });
         }
 
-        // Check whether email already exists
-        const checkSql = `
-            SELECT user_id
-            FROM USER
-            WHERE email = ?
+        if (password.length < 8) {
+            return res.status(400).json({
+                message: "Password must be at least 8 characters long"
+            });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+
+        const [existingUsers] = await db.promise().query(
+            "SELECT user_id FROM USER WHERE email = ?",
+            [normalizedEmail]
+        );
+
+        if (existingUsers.length > 0) {
+            return res.status(409).json({
+                message: "Email already registered"
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const sql = `
+            INSERT INTO USER
+            (name, email, phone, department_id, role_id, password_hash)
+            VALUES (?, ?, ?, ?, 1, ?)
         `;
 
-        db.query(checkSql, [email], async (err, results) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({
-                    message: "Database error"
-                });
-            }
+        const [result] = await db.promise().query(sql, [
+            name.trim(),
+            normalizedEmail,
+            phone || null,
+            department_id || null,
+            hashedPassword
+        ]);
 
-            if (results.length > 0) {
-                return res.status(409).json({
-                    message: "Email already registered"
-                });
-            }
-
-            // Hash the password
-            const hashedPassword = await bcrypt.hash(password, 10);
-
-            // Insert new employee
-            const insertSql = `
-                INSERT INTO USER
-                (name, email, phone, department_id, role_id, password_hash)
-                VALUES (?, ?, ?, ?, 1, ?)
-            `;
-
-            db.query(
-                insertSql,
-                [
-                    name,
-                    email,
-                    phone || null,
-                    department_id || null,
-                    hashedPassword
-                ],
-                (err, result) => {
-                    if (err) {
-                        console.error(err);
-                        return res.status(500).json({
-                            message: "Registration failed"
-                        });
-                    }
-
-                    res.status(201).json({
-                        message: "Employee registered successfully",
-                        user_id: result.insertId
-                    });
-                }
-            );
+        return res.status(201).json({
+            message: "Employee registered successfully",
+            user_id: result.insertId
         });
 
     } catch (error) {
+        if (error.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({
+                message: "Email already registered"
+            });
+        }
+
         console.error(error);
-        res.status(500).json({
-            message: "Server error"
+
+        return res.status(500).json({
+            message: "Server error during registration"
         });
     }
 };
 
 
-const loginUser = (req, res) => {
-    const { email, password } = req.body;
 
-    if (!email || !password) {
-        return res.status(400).json({
-            message: "Email and password are required"
-        });
-    }
 
-    const sql = `
-        SELECT
-            u.user_id,
-            u.name,
-            u.email,
-            u.password_hash,
-            u.role_id,
-            r.role_name
-        FROM USER u
-        JOIN ROLE r
-            ON u.role_id = r.role_id
-        WHERE u.email = ?
-    `;
+const loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
 
-    db.query(sql, [email], async (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({
-                message: "Database error"
+        if (!email || !password) {
+            return res.status(400).json({
+                message: "Email and password are required"
             });
         }
+
+        const normalizedEmail = email.trim().toLowerCase();
+
+        const sql = `
+            SELECT
+                u.user_id,
+                u.name,
+                u.email,
+                u.password_hash,
+                u.role_id,
+                r.role_name
+            FROM USER u
+            JOIN ROLE r ON u.role_id = r.role_id
+            WHERE u.email = ?
+        `;
+
+        const [results] = await db.promise().query(
+            sql,
+            [normalizedEmail]
+        );
 
         if (results.length === 0) {
             return res.status(401).json({
@@ -144,7 +137,7 @@ const loginUser = (req, res) => {
             { expiresIn: "1h" }
         );
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Login successful",
             token,
             user: {
@@ -155,7 +148,14 @@ const loginUser = (req, res) => {
                 role_name: user.role_name
             }
         });
-    });
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Server error during login"
+        });
+    }
 };
 
 

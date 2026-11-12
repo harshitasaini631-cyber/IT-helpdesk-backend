@@ -11,8 +11,19 @@ const {
     deleteEscalation
 } = require("../controllers/escalation.controller");
 
-router.get("/", authenticateUser, getAllEscalations);
-router.get("/:id", authenticateUser, getEscalationById);
+router.get(
+    "/",
+    authenticateUser,
+    authorizeRoles(2, 3, 4, 5),
+    getAllEscalations
+);
+
+router.get(
+    "/:id",
+    authenticateUser,
+    authorizeRoles(2, 3, 4, 5),
+    getEscalationById
+);
 
 router.post(
     "/",

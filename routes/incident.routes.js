@@ -24,7 +24,17 @@ router.delete(
     authorizeRoles(5),
     deleteIncident
 );
-router.patch("/:id/assign", authenticateUser, assignTechnician);
+router.patch(
+    "/:id/assign",
+    authenticateUser,
+    authorizeRoles(2, 4, 5),
+    assignTechnician
+);
 router.get("/:id/history", authenticateUser, getIncidentHistory);
-router.post("/:id/resolve", authenticateUser, resolveIncident);
+router.post(
+    "/:id/resolve",
+    authenticateUser,
+    authorizeRoles(2, 3, 4, 5),
+    resolveIncident
+);
 module.exports = router;
